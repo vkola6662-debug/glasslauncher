@@ -1,9 +1,41 @@
-@echo off
-cd /d "%~dp0"
-where node >nul 2>nul || (echo Install Node.js LTS from https://nodejs.org first, then run this again. & pause & exit /b 1)
-call npm install || (echo npm install failed & pause & exit /b 1)
-call npm run dist || (echo Build failed & pause & exit /b 1)
-echo.
-echo Done. GlassCraft.exe and GlassCraft-Setup.exe are in the dist folder.
-explorer dist
-pause
+{
+  "name": "glasscraft",
+  "version": "1.0.0",
+  "description": "Glass-style Minecraft launcher (1.21.11)",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --publish never"
+  },
+  "dependencies": {
+    "msmc": "^5.0.5"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "app.glasscraft",
+    "productName": "GlassCraft",
+    "files": [
+      "**/*",
+      "!dist/**",
+      "!*.bat",
+      "!.github/**"
+    ],
+    "win": {
+      "target": [
+        "portable",
+        "nsis"
+      ]
+    },
+    "portable": {
+      "artifactName": "GlassCraft.exe"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "artifactName": "GlassCraft-Setup.exe"
+    }
+  }
+}
