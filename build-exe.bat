@@ -1,0 +1,27 @@
+name: Build GlassCraft
+on: [push, workflow_dispatch]
+permissions:
+  contents: write
+jobs:
+  win:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm install
+      - run: npm run dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GlassCraft-windows
+          path: |
+            dist/GlassCraft.exe
+            dist/GlassCraft-Setup.exe
+      # Publishes the EXEs as a permanent download link on the repo's Releases page
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: GlassCraft (latest build)
+          files: |
+            dist/GlassCraft.exe
+            dist/GlassCraft-Setup.exe

@@ -1,0 +1,9 @@
+@echo off
+cd /d "%~dp0"
+where node >nul 2>nul || (echo Install Node.js LTS from https://nodejs.org first, then run this again. & pause & exit /b 1)
+call npm install || (echo npm install failed & pause & exit /b 1)
+call npm run dist || (echo Build failed & pause & exit /b 1)
+echo.
+echo Done. GlassCraft.exe and GlassCraft-Setup.exe are in the dist folder.
+explorer dist
+pause
