@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>GlassCraft</title>
+<html lang="ru"><head><meta charset="utf-8"><title>GlassCraft</title>
 <meta name="color-scheme" content="dark">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:">
 <style>
@@ -27,7 +27,7 @@ main .glass{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(8,
 .top{position:fixed;z-index:2;inset:0 0 auto;height:38px;-webkit-app-region:drag}
 nav{position:relative;padding:18px 12px;display:flex;flex-direction:column;gap:6px}
 nav h1{font-size:18px;font-weight:700;letter-spacing:-.02em;padding:2px 10px 16px}
-nav button{all:unset;position:relative;z-index:1;cursor:pointer;padding:10px 14px;border-radius:14px;color:var(--mute);font-weight:500;
+nav button{all:unset;display:block;position:relative;z-index:1;cursor:pointer;padding:10px 14px;border-radius:14px;color:var(--mute);font-weight:500;
  transition:color .3s var(--ease),background .25s,transform .45s var(--spring)}
 nav button:hover{color:var(--ink);background:rgba(255,255,255,.07)}
 nav button.on{color:var(--ink)}
@@ -45,6 +45,20 @@ nav .who{margin-top:auto;padding:12px;font-size:12px;color:var(--mute);border-to
 .pill.no-anim{transition:none}
 .pill.squish{animation:squish .6s var(--ease)}
 @keyframes squish{0%{scale:1 1}35%{scale:1.05 1.16}100%{scale:1 1}}
+/* language menu */
+.langwrap{position:relative}
+.menu{position:absolute;left:0;right:0;bottom:calc(100% + 8px);padding:6px;border-radius:16px;z-index:5;
+ background:rgba(22,24,29,.985);border:1px solid rgba(255,255,255,.22);
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 1px 2px rgba(0,0,0,.4),0 18px 36px rgba(0,0,0,.45);
+ opacity:0;visibility:hidden;pointer-events:none;transform:translateY(8px) scale(.94);transform-origin:50% 100%;
+ transition:opacity .25s,transform .5s var(--spring),visibility 0s linear .5s}
+.menu.open{opacity:1;visibility:visible;pointer-events:auto;transform:none;transition:opacity .25s,transform .5s var(--spring),visibility 0s}
+.menu button{box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;width:100%;padding:9px 12px;border-radius:11px}
+.menu button.sel{color:var(--ink);background:rgba(255,255,255,.13)}
+.menu .ck{font-style:normal;opacity:0;transition:opacity .25s}
+.menu button.sel .ck{opacity:1}
+/* text refraction (SVG displacement filter, only while animating) */
+.refract{filter:url(#refract)}
 main{position:relative;overflow:hidden}
 section{display:none;height:100%;padding:30px;flex-direction:column;gap:18px;overflow:auto}
 section.on{display:flex;animation:secin .6s var(--ease) both}
@@ -106,52 +120,138 @@ input[type=color]:active{transform:scale(.95);transition-duration:.12s}
 @media(prefers-reduced-motion:reduce){*,*::after{transition:none!important;animation:none!important}}
 </style></head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <filter id="refract" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
+    <feTurbulence type="fractalNoise" baseFrequency="0.006 0.011" numOctaves="2" seed="7" result="n"/>
+    <feDisplacementMap id="dr" in="SourceGraphic" in2="n" scale="0" xChannelSelector="R" yChannelSelector="G" result="dR"/>
+    <feColorMatrix in="dR" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="r"/>
+    <feDisplacementMap id="dg" in="SourceGraphic" in2="n" scale="0" xChannelSelector="R" yChannelSelector="G" result="dG"/>
+    <feColorMatrix in="dG" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="g"/>
+    <feDisplacementMap id="db" in="SourceGraphic" in2="n" scale="0" xChannelSelector="R" yChannelSelector="G" result="dB"/>
+    <feColorMatrix in="dB" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="b"/>
+    <feComposite in="r" in2="g" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="rg"/>
+    <feComposite in="rg" in2="b" operator="arithmetic" k1="0" k2="1" k3="1" k4="0"/>
+  </filter>
+</svg>
 <div class="top"></div>
 <div class="app">
   <nav class="glass">
     <div class="pill" id="pill"></div>
     <h1>GlassCraft</h1>
-    <button data-p="play" class="on">Play</button>
-    <button data-p="acct">Account</button>
-    <button data-p="set">Settings</button>
-    <button id="folder">Game folder</button>
-    <div class="who" id="who">Not signed in</div>
+    <button data-p="play" class="on" data-i="nav_play"></button>
+    <button data-p="acct" data-i="nav_account"></button>
+    <button data-p="set" data-i="nav_settings"></button>
+    <button id="folder" data-i="nav_folder"></button>
+    <div class="langwrap">
+      <div class="menu" id="langmenu" role="menu"></div>
+      <button id="lang" aria-haspopup="menu" aria-expanded="false"><span data-i="lang_label"></span> · <b id="langname"></b></button>
+    </div>
+    <div class="who" id="who"></div>
   </nav>
   <main class="glass">
     <section id="play" class="on">
       <h2>Minecraft Java Edition</h2>
       <div class="glass hero">
-        <div class="row"><span class="chip" id="ver">1.21.11</span><span class="sub" id="status">Ready to play</span></div>
-        <div class="row"><button class="btn" id="go">Play</button></div>
+        <div class="row"><span class="chip" id="ver">1.21.11</span><span class="sub" id="status"></span></div>
+        <div class="row"><button class="btn" id="go" data-i="btn_play"></button></div>
         <div class="bar"><i id="pct"></i></div>
         <div class="err" id="perr"></div>
       </div>
       <div class="glass" id="log"></div>
     </section>
     <section id="acct">
-      <h2>Account</h2>
-      <p class="sub" id="cur">Choose how you want to play.</p>
-      <div class="row"><button class="btn" id="ms">Sign in with Microsoft</button><button class="btn ghost" id="out">Sign out</button></div>
-      <div class="row"><input type="text" id="nick" placeholder="Offline username" maxlength="16"><button class="btn ghost" id="off">Use offline account</button></div>
+      <h2 data-i="acct_title"></h2>
+      <p class="sub" id="cur"></p>
+      <div class="row"><button class="btn" id="ms" data-i="btn_ms"></button><button class="btn ghost" id="out" data-i="btn_out"></button></div>
+      <div class="row"><input type="text" id="nick" data-ip="nick_ph" maxlength="16"><button class="btn ghost" id="off" data-i="btn_off"></button></div>
       <div class="err" id="aerr"></div>
     </section>
     <section id="set">
-      <h2>Settings</h2>
-      <p class="sub">Memory for the game: <b id="ramv">4096</b> MB</p>
+      <h2 data-i="set_title"></h2>
+      <p class="sub"><span data-i="mem_label"></span> <b id="ramv">4096</b> <span data-i="mb"></span></p>
       <input type="range" id="ram" min="1024" max="16384" step="512" value="4096">
-      <h3>Launcher color</h3>
+      <h3 data-i="col_title"></h3>
       <div class="row">
-        <input type="color" id="col" value="#8a8d94" title="Pick any color">
+        <input type="color" id="col" value="#8a8d94" data-it="col_pick">
         <div class="row" id="swatches"></div>
-        <button class="btn ghost" id="colreset">Reset</button>
+        <button class="btn ghost" id="colreset" data-i="btn_reset"></button>
       </div>
     </section>
   </main>
 </div>
 <script>
 const $=id=>document.getElementById(id);
-const show=a=>{$('who').textContent=a?`${a.name} · ${a.type==='msa'?'Microsoft':'Offline'}`:'Not signed in';
-  $('cur').textContent=a?`Signed in as ${a.name} (${a.type==='msa'?'Microsoft account':'offline'}).`:'Choose how you want to play.'};
+
+/* ---- Translations (default: Russian) ---- */
+const LANGS={ru:'Русский',en:'English'};
+const I18N={
+ ru:{nav_play:'Играть',nav_account:'Аккаунт',nav_settings:'Настройки',nav_folder:'Папка игры',lang_label:'Язык',
+  not_signed:'Вход не выполнен',kind_ms:'Microsoft',kind_off:'Офлайн',
+  st_ready:'Готов к игре',st_prep:'Подготовка…',st_closed:'Игра закрыта',st_fetch:'Получение информации о версии…',st_dl:'Загрузка файлов…',st_start:'Запуск Minecraft…',
+  btn_play:'Играть',acct_title:'Аккаунт',acct_choose:'Выбери, как хочешь играть.',acct_signed:'Вход выполнен: {name} ({kind}).',
+  acct_kind_ms:'аккаунт Microsoft',acct_kind_off:'офлайн',btn_ms:'Войти через Microsoft',btn_out:'Выйти',nick_ph:'Офлайн-ник',btn_off:'Офлайн-аккаунт',
+  set_title:'Настройки',mem_label:'Память для игры:',mb:'МБ',col_title:'Цвет лаунчера',col_pick:'Выбери любой цвет',btn_reset:'Сбросить',
+  err_signin:'Сначала войди в аккаунт',err_name:'Ник: 3–16 символов, латинские буквы, цифры или _'},
+ en:{nav_play:'Play',nav_account:'Account',nav_settings:'Settings',nav_folder:'Game folder',lang_label:'Language',
+  not_signed:'Not signed in',kind_ms:'Microsoft',kind_off:'Offline',
+  st_ready:'Ready to play',st_prep:'Preparing…',st_closed:'Game closed',st_fetch:'Fetching version info…',st_dl:'Downloading files…',st_start:'Starting Minecraft…',
+  btn_play:'Play',acct_title:'Account',acct_choose:'Choose how you want to play.',acct_signed:'Signed in as {name} ({kind}).',
+  acct_kind_ms:'Microsoft account',acct_kind_off:'offline',btn_ms:'Sign in with Microsoft',btn_out:'Sign out',nick_ph:'Offline username',btn_off:'Use offline account',
+  set_title:'Settings',mem_label:'Memory for the game:',mb:'MB',col_title:'Launcher color',col_pick:'Pick any color',btn_reset:'Reset',
+  err_signin:'Sign in first',err_name:'Name must be 3–16 letters, digits or _'}
+};
+let lang=I18N[localStorage.lang]?localStorage.lang:'ru';
+const t=k=>(I18N[lang][k]??I18N.en[k]??k);
+
+let acc=null,st={k:'st_ready',a:''};
+const renderSt=()=>st.k==='raw'?st.a:t(st.k)+(st.a?' '+st.a:'');
+const setSt=(k,a='')=>{st={k,a};$('status').textContent=renderSt()};
+function renderAcc(){
+  const a=acc;
+  $('who').textContent=a?`${a.name} · ${a.type==='msa'?t('kind_ms'):t('kind_off')}`:t('not_signed');
+  $('cur').textContent=a?t('acct_signed').replace('{name}',a.name).replace('{kind}',a.type==='msa'?t('acct_kind_ms'):t('acct_kind_off')):t('acct_choose');
+}
+const show=a=>{acc=a;renderAcc()};
+const errText=e=>{
+  const m=String((e&&e.message)||e).replace(/^Error invoking remote method '[^']+': (Error: )?/,'');
+  if(/Sign in first/.test(m))return t('err_signin');
+  if(/^Name must be/.test(m))return t('err_name');
+  return m;
+};
+function applyLang(){
+  document.documentElement.lang=lang;
+  document.querySelectorAll('[data-i]').forEach(e=>e.textContent=t(e.dataset.i));
+  document.querySelectorAll('[data-ip]').forEach(e=>e.placeholder=t(e.dataset.ip));
+  document.querySelectorAll('[data-it]').forEach(e=>e.title=t(e.dataset.it));
+  $('langname').textContent=LANGS[lang];
+  document.querySelectorAll('.menu button').forEach(b=>b.classList.toggle('sel',b.dataset.l===lang));
+  renderAcc();setSt(st.k,st.a);
+}
+
+/* ---- Text refraction animation ---- */
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const FR=$('dr'),FG=$('dg'),FB=$('db');
+const setScale=a=>{FR.setAttribute('scale',a);FG.setAttribute('scale',a*.93);FB.setAttribute('scale',a*.86)};
+let rafId=0,activeEls=[],pending=null;
+/* mode 'in': strong bend that settles (page flip). mode 'wave': bends up, swaps text at the peak, settles (language). */
+function refract(els,o){
+  const{mode='in',dur=800,peak=120,onSwap}=o||{};
+  if(pending){pending();pending=null}
+  if(reduce){onSwap&&onSwap();return}
+  cancelAnimationFrame(rafId);
+  activeEls.forEach(e=>e.classList.remove('refract'));
+  activeEls=els;els.forEach(e=>e.classList.add('refract'));
+  pending=onSwap||null;
+  const t0=performance.now();
+  const step=now=>{
+    const p=Math.min(1,Math.max(0,(now-t0)/dur));
+    setScale(mode==='wave'?peak*Math.pow(Math.sin(Math.PI*p),1.2):peak*Math.pow(1-p,3));
+    if(pending&&p>=.5){const f=pending;pending=null;f()}
+    if(p<1)rafId=requestAnimationFrame(step);
+    else{setScale(0);els.forEach(e=>e.classList.remove('refract'));activeEls=[]}
+  };
+  rafId=requestAnimationFrame(step);
+}
 
 /* ---- Navigation with sliding glass pill (pixel-snapped for crisp edges) ---- */
 const nav=document.querySelector('nav'),pill=$('pill'),order=['play','acct','set'];
@@ -170,20 +270,44 @@ const activeBtn=()=>document.querySelector('nav button[data-p].on');
 document.querySelectorAll('nav button[data-p]').forEach(b=>b.onclick=()=>{
   const to=b.dataset.p;if(to===cur)return;
   const dir=order.indexOf(to)>order.indexOf(cur)?1:-1;
+  closeMenu();
   document.querySelectorAll('nav button[data-p],section').forEach(x=>x.classList.remove('on'));
   b.classList.add('on');
   const s=$(to);s.style.setProperty('--dx',dir*32+'px');s.classList.add('on');
   cur=to;movePill(b,true);
+  refract([s],{mode:'in',dur:850,peak:120});
 });
+
+/* ---- Language menu ---- */
+const menu=$('langmenu'),langBtn=$('lang');
+Object.entries(LANGS).forEach(([k,name])=>{
+  const b=document.createElement('button');b.dataset.l=k;b.setAttribute('role','menuitem');
+  const s=document.createElement('span');s.textContent=name;
+  const c=document.createElement('i');c.className='ck';c.textContent='✓';
+  b.append(s,c);b.onclick=()=>setLang(k);menu.appendChild(b);
+});
+function closeMenu(){menu.classList.remove('open');langBtn.setAttribute('aria-expanded','false')}
+langBtn.onclick=()=>{const o=!menu.classList.contains('open');menu.classList.toggle('open',o);langBtn.setAttribute('aria-expanded',String(o))};
+document.addEventListener('pointerdown',e=>{if(!e.target.closest('.langwrap'))closeMenu()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMenu()});
+function setLang(l){
+  closeMenu();
+  if(l===lang||!I18N[l])return;
+  localStorage.lang=l;
+  const els=[...document.querySelectorAll('nav > h1, nav > button, nav > .who, #lang, section.on')];
+  refract(els,{mode:'wave',dur:950,peak:120,onSwap:()=>{lang=l;applyLang();movePill(activeBtn(),false)}});
+}
+
+applyLang();
 movePill(activeBtn(),false);
 window.addEventListener('load',()=>movePill(activeBtn(),false));
 window.addEventListener('resize',()=>movePill(activeBtn(),false));
 
 const flash=b=>{b.classList.remove('flash');void b.offsetWidth;b.classList.add('flash')};
-$('folder').onclick=()=>{flash($('folder'));api.openFolder().catch(e=>{$('perr').textContent=String(e.message||e)})};
+$('folder').onclick=()=>{flash($('folder'));api.openFolder().catch(e=>{$('perr').textContent=errText(e)})};
 
 api.info().then(i=>{show(i.account);$('ver').textContent=i.version});
-const guard=(btn,err,fn)=>async()=>{btn.disabled=true;err.textContent='';try{await fn()}catch(e){err.textContent=String(e.message||e).replace(/^Error invoking remote method '[^']+': (Error: )?/,'')}btn.disabled=false};
+const guard=(btn,err,fn)=>async()=>{btn.disabled=true;err.textContent='';try{await fn()}catch(e){err.textContent=errText(e)}btn.disabled=false};
 $('ms').onclick=guard($('ms'),$('aerr'),async()=>show(await api.loginMs()));
 $('off').onclick=guard($('off'),$('aerr'),async()=>show(await api.loginOffline($('nick').value)));
 $('out').onclick=async()=>{await api.logout();show(null)};
@@ -192,10 +316,17 @@ const ram=$('ram'),fill=()=>ram.style.setProperty('--v',((ram.value-ram.min)/(ra
 ram.value=localStorage.ram||4096;$('ramv').textContent=ram.value;fill();
 ram.oninput=e=>{localStorage.ram=e.target.value;$('ramv').textContent=e.target.value;fill()};
 
-api.onProgress(d=>{$('status').textContent=d.text;$('pct').style.width=Math.round(d.pct*100)+'%'});
-api.onLog(t=>{const l=$('log');l.textContent+=t;l.scrollTop=l.scrollHeight});
-$('go').onclick=guard($('go'),$('perr'),async()=>{$('log').textContent='';$('status').textContent='Preparing…';
-  try{await api.play(+ram.value);$('status').textContent='Game closed'}finally{$('pct').style.width='0'}});
+api.onProgress(d=>{
+  const m=String(d.text);
+  if(/^Fetching version/.test(m))setSt('st_fetch');
+  else if(/^Downloading files/.test(m))setSt('st_dl',(m.match(/(\d+\/\d+)\s*$/)||[''])[0]);
+  else if(/^Starting Minecraft/.test(m))setSt('st_start');
+  else setSt('raw',m);
+  $('pct').style.width=Math.round(d.pct*100)+'%';
+});
+api.onLog(x=>{const l=$('log');l.textContent+=x;l.scrollTop=l.scrollHeight});
+$('go').onclick=guard($('go'),$('perr'),async()=>{$('log').textContent='';setSt('st_prep');
+  try{await api.play(+ram.value);setSt('st_closed')}finally{$('pct').style.width='0'}});
 
 /* ---- Launcher color ---- */
 const PRESETS=['#8a8d94','#3b82f6','#8b5cf6','#ec4899','#ef4444','#f59e0b','#22c55e','#14b8a6'];
